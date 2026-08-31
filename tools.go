@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -13,6 +14,10 @@ type emptyInput struct{}
 
 type headerInput struct {
 	Header string `json:"header" jsonschema:"database entry header"`
+}
+
+type prefixInput struct {
+	Prefix string `json:"prefix" jsonschema:"header prefix to search for"`
 }
 
 type dateRangeInput struct {
@@ -43,6 +48,14 @@ func registerTools(server *mcp.Server, config *config) {
 			entries = append(entries, entry.Header)
 		}
 		return nil, DatabaseSummary{Entries: entries, Count: len(entries)}, nil
+	})
+
+	mcp.AddTool(server, &mcp.Tool{Name: "database_search", Description: "Find database headers that start with a prefix."}, func(_ context.Context, _ *mcp.CallToolRequest, input prefixInput) (*mcp.CallToolResult, []string, error) {
+		database, err := loadDatabase(config.databasePath)
+		if err != nil {
+			return nil, nil, err
+		}
+		return nil, searchDatabase(database, input.Prefix), nil
 	})
 
 	mcp.AddTool(server, &mcp.Tool{Name: "database_entry_raw", Description: "Read one raw database report entry by header."}, func(_ context.Context, _ *mcp.CallToolRequest, input headerInput) (*mcp.CallToolResult, DatabaseEntry, error) {
@@ -92,6 +105,16 @@ func registerTools(server *mcp.Server, config *config) {
 		}
 		return nil, result, nil
 	})
+}
+
+func searchDatabase(database []DatabaseEntry, prefix string) []string {
+	matches := make([]string, 0)
+	for _, entry := range database {
+		if strings.HasPrefix(entry.Header, prefix) {
+			matches = append(matches, entry.Header)
+		}
+	}
+	return matches
 }
 
 func filteredLogs(config *config, input dateRangeInput) ([]LogEntry, error) {

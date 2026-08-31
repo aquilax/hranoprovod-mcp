@@ -53,6 +53,18 @@ func TestDateRangeUsesExclusiveEnd(t *testing.T) {
 	}
 }
 
+func TestSearchDatabaseByPrefix(t *testing.T) {
+	database := []DatabaseEntry{
+		{Header: "soups/chicken"},
+		{Header: "bread/rye"},
+		{Header: "soups/tomato"},
+	}
+	matches := searchDatabase(database, "soups/")
+	if len(matches) != 2 || matches[0] != "soups/chicken" || matches[1] != "soups/tomato" {
+		t.Fatalf("unexpected prefix matches: %#v", matches)
+	}
+}
+
 func TestRawLogfileEntriesDoNotResolveDatabaseRecords(t *testing.T) {
 	dir := t.TempDir()
 	databasePath := filepath.Join(dir, "database.hr")
