@@ -45,8 +45,25 @@ func registerTools(server *mcp.Server, config *config) {
 		return nil, DatabaseSummary{Entries: entries, Count: len(entries)}, nil
 	})
 
-	mcp.AddTool(server, &mcp.Tool{Name: "database_entry", Description: "Read one database report entry by header."}, func(_ context.Context, _ *mcp.CallToolRequest, input headerInput) (*mcp.CallToolResult, DatabaseEntry, error) {
+	mcp.AddTool(server, &mcp.Tool{Name: "database_entry_raw", Description: "Read one raw database report entry by header."}, func(_ context.Context, _ *mcp.CallToolRequest, input headerInput) (*mcp.CallToolResult, DatabaseEntry, error) {
 		database, err := loadDatabase(config.databasePath)
+		if err != nil {
+			return nil, DatabaseEntry{}, err
+		}
+		for _, entry := range database {
+			if entry.Header == input.Header {
+				return nil, entry, nil
+			}
+		}
+		return nil, DatabaseEntry{}, fmt.Errorf("database header %q not found", input.Header)
+	})
+
+	mcp.AddTool(server, &mcp.Tool{Name: "database_entry_resolved", Description: "Read one database report entry with nested references resolved."}, func(_ context.Context, _ *mcp.CallToolRequest, input headerInput) (*mcp.CallToolResult, DatabaseEntry, error) {
+		database, err := loadDatabase(config.databasePath)
+		if err != nil {
+			return nil, DatabaseEntry{}, err
+		}
+		database, err = resolveDatabase(database)
 		if err != nil {
 			return nil, DatabaseEntry{}, err
 		}

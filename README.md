@@ -15,7 +15,8 @@ The server exits if `HR_DATABASE` is missing. File open and parse errors are ret
 ## Tools
 
 - `database_summary` lists database headers and their count.
-- `database_entry` reads a database entry by its `header`.
+- `database_entry_raw` reads an unresolved database entry by its `header`.
+- `database_entry_resolved` reads a database entry by its `header` after nested references are resolved.
 - `log_entries` reads logfile entries, optionally using inclusive `from` and `to` dates.
 - `log_summary` returns the filtered entry count, date range, and summed element totals.
 
