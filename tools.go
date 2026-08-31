@@ -37,6 +37,10 @@ type LogSummary struct {
 	Totals    []Element `json:"totals"`
 }
 
+type LogEntriesResult struct {
+	Entries []LogEntry `json:"entries"`
+}
+
 func registerTools(server *mcp.Server, config *config) {
 	mcp.AddTool(server, &mcp.Tool{Name: "database_summary", Description: "List available database report headers."}, func(_ context.Context, _ *mcp.CallToolRequest, _ emptyInput) (*mcp.CallToolResult, DatabaseSummary, error) {
 		database, err := loadDatabase(config.databasePath)
@@ -93,9 +97,15 @@ func registerTools(server *mcp.Server, config *config) {
 		return nil, entries, err
 	})
 
-	mcp.AddTool(server, &mcp.Tool{Name: "log_entries_raw", Description: "Read raw dated logfile entries in a half-open date range [from, to)."}, func(_ context.Context, _ *mcp.CallToolRequest, input dateRangeInput) (*mcp.CallToolResult, []LogEntry, error) {
+	mcp.AddTool(server, &mcp.Tool{Name: "log_entries_raw", Description: "Read raw dated logfile entries in a half-open date range [from, to)."}, func(_ context.Context, _ *mcp.CallToolRequest, input dateRangeInput) (*mcp.CallToolResult, LogEntriesResult, error) {
 		entries, err := filteredRawLogs(config, input)
-		return nil, entries, err
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{&mcp.TextContent{Text: err.Error()}},
+				IsError: true,
+			}, LogEntriesResult{Entries: []LogEntry{}}, nil
+		}
+		return nil, LogEntriesResult{Entries: entries}, nil
 	})
 
 	mcp.AddTool(server, &mcp.Tool{Name: "log_summary", Description: "Aggregate logfile element totals over a half-open date range [from, to)."}, func(_ context.Context, _ *mcp.CallToolRequest, input dateRangeInput) (*mcp.CallToolResult, LogSummary, error) {

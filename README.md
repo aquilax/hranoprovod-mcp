@@ -19,7 +19,7 @@ The server exits if `HR_DATABASE` is missing. File open and parse errors are ret
 - `database_entry_raw` reads an unresolved database entry by its `header`.
 - `database_entry_resolved` reads a database entry by its `header` after nested references are resolved.
 - `log_entries` reads logfile entries in the half-open `[from, to)` date interval.
-- `log_entries_raw` reads logfile entries without resolving database references.
+- `log_entries_raw` reads logfile entries without resolving database references and returns them in an `entries` field.
 - `log_summary` returns the filtered entry count, date range, and summed element totals using `[from, to)`.
 
 All tools are read-only. Database duplicate headers use the last entry, matching the CLI data model. Duplicate elements are preserved in raw entries and summed by `log_summary`.
