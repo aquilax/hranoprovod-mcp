@@ -80,6 +80,11 @@ func registerTools(server *mcp.Server, config *config) {
 		return nil, entries, err
 	})
 
+	mcp.AddTool(server, &mcp.Tool{Name: "log_entries_raw", Description: "Read raw dated logfile entries without resolving database references."}, func(_ context.Context, _ *mcp.CallToolRequest, input dateRangeInput) (*mcp.CallToolResult, []LogEntry, error) {
+		entries, err := filteredRawLogs(config, input)
+		return nil, entries, err
+	})
+
 	mcp.AddTool(server, &mcp.Tool{Name: "log_summary", Description: "Aggregate logfile element totals over an inclusive date range."}, func(_ context.Context, _ *mcp.CallToolRequest, input dateRangeInput) (*mcp.CallToolResult, LogSummary, error) {
 		result, err := summarizeLogs(config, input)
 		if err != nil {
@@ -106,7 +111,26 @@ func filteredLogs(config *config, input dateRangeInput) ([]LogEntry, error) {
 		return nil, err
 	}
 	result := make([]LogEntry, 0)
-	err = loadLogfile(config.logfilePath, database, func(entry LogEntry) error {
+	err = loadResolvedLogfile(config.logfilePath, database, func(entry LogEntry) error {
+		date, _ := time.Parse(dateFormat, entry.Date)
+		if inDateRange(date, from, to) {
+			result = append(result, entry)
+		}
+		return nil
+	})
+	return result, err
+}
+
+func filteredRawLogs(config *config, input dateRangeInput) ([]LogEntry, error) {
+	if config.logfilePath == "" {
+		return nil, fmt.Errorf("HR_LOGFILE is not configured")
+	}
+	from, to, err := dateRange(input)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]LogEntry, 0)
+	err = loadLogfile(config.logfilePath, func(entry LogEntry) error {
 		date, _ := time.Parse(dateFormat, entry.Date)
 		if inDateRange(date, from, to) {
 			result = append(result, entry)
@@ -134,7 +158,7 @@ func summarizeLogs(config *config, input dateRangeInput) (LogSummary, error) {
 	}
 	result := LogSummary{Totals: make([]Element, 0)}
 	totals := make(map[string]float64)
-	err = loadLogfile(config.logfilePath, database, func(entry LogEntry) error {
+	err = loadResolvedLogfile(config.logfilePath, database, func(entry LogEntry) error {
 		date, _ := time.Parse(dateFormat, entry.Date)
 		if !inDateRange(date, from, to) {
 			return nil

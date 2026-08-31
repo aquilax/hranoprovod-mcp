@@ -26,7 +26,7 @@ func TestLoadSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = loadLogfile(config.logfilePath, databaseEntries, func(entry LogEntry) error {
+	err = loadResolvedLogfile(config.logfilePath, databaseEntries, func(entry LogEntry) error {
 		logs = append(logs, entry)
 		return nil
 	})
@@ -40,6 +40,22 @@ func TestLoadSnapshot(t *testing.T) {
 	summary, err := summarizeLogs(config, dateRangeInput{})
 	if err != nil || summary.Count != 2 || summary.FirstDate != "2024/01/01" || summary.LastDate != "2024/01/02" || len(summary.Totals) != 2 || summary.Totals[0].Name != "milk" || summary.Totals[0].Value != 1 || summary.Totals[1].Name != "oats" || summary.Totals[1].Value != 5 {
 		t.Fatalf("unexpected summary: %#v, %v", summary, err)
+	}
+}
+
+func TestRawLogfileEntriesDoNotResolveDatabaseRecords(t *testing.T) {
+	dir := t.TempDir()
+	databasePath := filepath.Join(dir, "database.hr")
+	logfilePath := filepath.Join(dir, "log.hr")
+	writeTestFile(t, databasePath, "meal\n  calories 100\n")
+	writeTestFile(t, logfilePath, "2024/01/01\n  meal 2\n")
+	var entries []LogEntry
+	err := loadLogfile(logfilePath, func(entry LogEntry) error {
+		entries = append(entries, entry)
+		return nil
+	})
+	if err != nil || len(entries) != 1 || len(entries[0].Elements) != 1 || entries[0].Elements[0] != (Element{Name: "meal", Value: 2}) {
+		t.Fatalf("unexpected raw entries: %#v, %v", entries, err)
 	}
 }
 
@@ -58,7 +74,7 @@ func TestLogfileResolvesDatabaseRecords(t *testing.T) {
 		t.Fatal(err)
 	}
 	var entries []LogEntry
-	err = loadLogfile(logfilePath, database, func(entry LogEntry) error {
+	err = loadResolvedLogfile(logfilePath, database, func(entry LogEntry) error {
 		entries = append(entries, entry)
 		return nil
 	})

@@ -57,11 +57,23 @@ func loadDatabase(path string) ([]DatabaseEntry, error) {
 	return entries, nil
 }
 
-func loadLogfile(path string, database []DatabaseEntry, callback func(LogEntry) error) error {
+func loadLogfile(path string, callback func(LogEntry) error) error {
+	return walkLogfile(path, func(parsed *node.ParserNode) ([]Element, error) {
+		return elements(parsed.Elements), nil
+	}, callback)
+}
+
+func loadResolvedLogfile(path string, database []DatabaseEntry, callback func(LogEntry) error) error {
 	databaseByHeader := make(map[string]DatabaseEntry, len(database))
 	for _, entry := range database {
 		databaseByHeader[entry.Header] = entry
 	}
+	return walkLogfile(path, func(parsed *node.ParserNode) ([]Element, error) {
+		return resolveLogElements(parsed.Elements, databaseByHeader), nil
+	}, callback)
+}
+
+func walkLogfile(path string, elementsForNode func(*node.ParserNode) ([]Element, error), callback func(LogEntry) error) error {
 	err := parser.ParseFileCallback(path, parser.NewDefaultConfig(), func(parsed *node.ParserNode, parseErr error) (bool, error) {
 		if parseErr != nil {
 			return true, fmt.Errorf("%s: %w", path, parseErr)
@@ -70,7 +82,11 @@ func loadLogfile(path string, database []DatabaseEntry, callback func(LogEntry) 
 		if err != nil {
 			return true, fmt.Errorf("%s: invalid date %q: %w", path, parsed.Header, err)
 		}
-		if err := callback(LogEntry{Date: date.Format(dateFormat), Elements: resolveLogElements(parsed.Elements, databaseByHeader), Metadata: metadata(parsed.Metadata)}); err != nil {
+		nodeElements, err := elementsForNode(parsed)
+		if err != nil {
+			return true, err
+		}
+		if err := callback(LogEntry{Date: date.Format(dateFormat), Elements: nodeElements, Metadata: metadata(parsed.Metadata)}); err != nil {
 			return true, err
 		}
 		return false, nil
