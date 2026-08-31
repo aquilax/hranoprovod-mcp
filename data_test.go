@@ -33,13 +33,23 @@ func TestLoadSnapshot(t *testing.T) {
 	if err != nil || len(logs) != 2 || logs[0].Date != "2024/01/02" {
 		t.Fatalf("unexpected walked logs: %#v, %v", logs, err)
 	}
-	filtered, err := filteredLogs(config, dateRangeInput{From: "2024/01/01", To: "2024/01/01"})
+	filtered, err := filteredLogs(config, dateRangeInput{From: "2024/01/01", To: "2024/01/02"})
 	if err != nil || len(filtered) != 1 || len(filtered[0].Elements) != 2 || filtered[0].Elements[1] != (Element{Name: "oats", Value: 2}) {
 		t.Fatalf("unexpected filtered entries: %#v, %v", filtered, err)
 	}
 	summary, err := summarizeLogs(config, dateRangeInput{})
 	if err != nil || summary.Count != 2 || summary.FirstDate != "2024/01/01" || summary.LastDate != "2024/01/02" || len(summary.Totals) != 2 || summary.Totals[0].Name != "milk" || summary.Totals[0].Value != 1 || summary.Totals[1].Name != "oats" || summary.Totals[1].Value != 5 {
 		t.Fatalf("unexpected summary: %#v, %v", summary, err)
+	}
+}
+
+func TestDateRangeUsesExclusiveEnd(t *testing.T) {
+	from, to, err := dateRange(dateRangeInput{From: "2024/01/01", To: "2024/01/03"})
+	if err != nil || !inDateRange(from, from, to) || !inDateRange(to.AddDate(0, 0, -1), from, to) || inDateRange(to, from, to) {
+		t.Fatalf("unexpected half-open interval: %v, %v, %v", from, to, err)
+	}
+	if _, _, err := dateRange(dateRangeInput{From: "2024/01/02", To: "2024/01/02"}); err == nil {
+		t.Fatal("expected empty interval to be rejected")
 	}
 }
 

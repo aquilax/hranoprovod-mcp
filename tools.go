@@ -17,7 +17,7 @@ type headerInput struct {
 
 type dateRangeInput struct {
 	From string `json:"from,omitempty" jsonschema:"inclusive start date in YYYY/MM/DD format"`
-	To   string `json:"to,omitempty" jsonschema:"inclusive end date in YYYY/MM/DD format"`
+	To   string `json:"to,omitempty" jsonschema:"exclusive end date in YYYY/MM/DD format"`
 }
 
 type DatabaseSummary struct {
@@ -75,17 +75,17 @@ func registerTools(server *mcp.Server, config *config) {
 		return nil, DatabaseEntry{}, fmt.Errorf("database header %q not found", input.Header)
 	})
 
-	mcp.AddTool(server, &mcp.Tool{Name: "log_entries", Description: "Read dated logfile entries, optionally filtered by an inclusive date range."}, func(_ context.Context, _ *mcp.CallToolRequest, input dateRangeInput) (*mcp.CallToolResult, []LogEntry, error) {
+	mcp.AddTool(server, &mcp.Tool{Name: "log_entries", Description: "Read dated logfile entries in a half-open date range [from, to)."}, func(_ context.Context, _ *mcp.CallToolRequest, input dateRangeInput) (*mcp.CallToolResult, []LogEntry, error) {
 		entries, err := filteredLogs(config, input)
 		return nil, entries, err
 	})
 
-	mcp.AddTool(server, &mcp.Tool{Name: "log_entries_raw", Description: "Read raw dated logfile entries without resolving database references."}, func(_ context.Context, _ *mcp.CallToolRequest, input dateRangeInput) (*mcp.CallToolResult, []LogEntry, error) {
+	mcp.AddTool(server, &mcp.Tool{Name: "log_entries_raw", Description: "Read raw dated logfile entries in a half-open date range [from, to)."}, func(_ context.Context, _ *mcp.CallToolRequest, input dateRangeInput) (*mcp.CallToolResult, []LogEntry, error) {
 		entries, err := filteredRawLogs(config, input)
 		return nil, entries, err
 	})
 
-	mcp.AddTool(server, &mcp.Tool{Name: "log_summary", Description: "Aggregate logfile element totals over an inclusive date range."}, func(_ context.Context, _ *mcp.CallToolRequest, input dateRangeInput) (*mcp.CallToolResult, LogSummary, error) {
+	mcp.AddTool(server, &mcp.Tool{Name: "log_summary", Description: "Aggregate logfile element totals over a half-open date range [from, to)."}, func(_ context.Context, _ *mcp.CallToolRequest, input dateRangeInput) (*mcp.CallToolResult, LogSummary, error) {
 		result, err := summarizeLogs(config, input)
 		if err != nil {
 			return nil, LogSummary{}, err
@@ -200,12 +200,12 @@ func dateRange(input dateRangeInput) (time.Time, time.Time, error) {
 			return time.Time{}, time.Time{}, fmt.Errorf("invalid to date %q: %w", input.To, err)
 		}
 	}
-	if !from.IsZero() && !to.IsZero() && from.After(to) {
-		return time.Time{}, time.Time{}, fmt.Errorf("from date must not be after to date")
+	if !from.IsZero() && !to.IsZero() && !from.Before(to) {
+		return time.Time{}, time.Time{}, fmt.Errorf("from date must be before to date")
 	}
 	return from, to, nil
 }
 
 func inDateRange(date, from, to time.Time) bool {
-	return (from.IsZero() || !date.Before(from)) && (to.IsZero() || !date.After(to))
+	return (from.IsZero() || !date.Before(from)) && (to.IsZero() || date.Before(to))
 }
