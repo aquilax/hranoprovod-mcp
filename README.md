@@ -4,7 +4,7 @@ Read-only MCP server for [hranoprov-cli](https://github.com/aquilax/hranoprovod-
 
 ## Configuration
 
-`HR_DATABASE` is required and must point to a hranoprov database file. `HR_LOGFILE` is optional and must point to a logfile whose top-level headers are dates in `YYYY/MM/DD` format. Paths are supplied as-is; tools cannot read arbitrary files.
+`HR_DATABASE` is required and must point to a hranoprovod database file. `HR_LOGFILE` is optional and must point to a logfile whose top-level headers are dates in `YYYY/MM/DD` format. Paths are supplied as-is; tools cannot read arbitrary files.
 
 ```sh
 HR_DATABASE=/path/database.hr HR_LOGFILE=/path/log.hr go run .
